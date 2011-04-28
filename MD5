@@ -1,0 +1,9 @@
+d14f5071df3faf450619fbb15d741be8 *ChangeLog
+b4b2a4f4d17329e443a1324fa86d18ae *DESCRIPTION
+5807c21aeb5910e38672fe4661304195 *NAMESPACE
+73f404fbfcbefb6344a05dda1f47ec20 *R/cannedEstimationFunctions.R
+75576a5af069333cb866916eb69ae421 *R/permutationInference.R
+e67e7cbab459340e1717c753fedd6ae6 *R/simulationEngines.R
+e44f216088a40a814f1e822521b0a995 *man/expit.Rd
+b4c636e3d7df8a53440f088194c7e9a9 *man/fixed.effect.Rd
+4ec6bfe0c20425e9f1daf001acc45d4b *man/power.sim.normal.Rd

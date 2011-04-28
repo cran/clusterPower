@@ -20,12 +20,19 @@ power.sim.normal <- function(n.sim=10,
 			     verbose=FALSE)
 {
 	## validation
+	incl.period.effect <- TRUE
+	if(period.var<0)
+		stop("period.var must be positive")
 	if(is.null(ICC) & is.null(indiv.var))
 		stop("Either ICC or indiv.var must be specified.")
 	if(length(period.effect) != n.periods & length(period.effect) != 1)
 		stop("Length of period.effect must equal n.periods or 1.")
-	if(period.var==0 & length(period.effect)==1)
+	if(length(period.effect) > 1 & period.var > 0)
+		stop("cannot specify both period variance and exact period effects.")
+	if(period.var==0 & length(period.effect)==1){
 		message("**MSG**: Period effect taken as a constant across entire study.")
+		incl.period.effect <- FALSE
+	}
 
 	## calculate total number of observations in entire study
 	if(length(cluster.size)==1){
@@ -72,14 +79,14 @@ power.sim.normal <- function(n.sim=10,
 		noise <- rnorm(n.obs, 0, sd=sqrt(indiv.var))
 		sim.dat[,"y"] <- mean.y + noise
 
-		sim.dat <- data.frame(sim.dat)
+		sim.dat <- data.frame(sim.dat, at.risk.time=1)
 		sim.dat$clust <- factor(sim.dat$clust)
 		sim.dat$per <- factor(sim.dat$per)
 
 
 		## estimate tx effect
 		tmp <- estimation.function(dat=sim.dat,
-					   period.var=period.var,
+					   incl.period.effect=incl.period.effect,
 					   outcome.type="gaussian",
 					   alpha=alpha)
 		results[i,c("beta.est", "beta.cil", "beta.cih")] <- tmp
@@ -101,7 +108,8 @@ power.sim.normal <- function(n.sim=10,
 
 	out <- list(results=results,
 		    power=power,
-		    permute.power=permute.power)
+		    permute.power=permute.power,
+		    sample.data=sim.dat)
 	return(out)
 }
 
@@ -121,10 +129,17 @@ power.sim.binomial <- function(n.sim=10,
 {
 
 	## validation
+	incl.period.effect <- TRUE
+	if(period.var<0)
+		stop("period.var must be positive")
 	if(length(period.effect) != n.periods & length(period.effect) != 1)
 		stop("Length of period.effect must equal n.periods or 1.")
-	if(period.var==0 & length(period.effect)==1)
+	if(length(period.effect) > 1 & period.var > 0)
+		stop("cannot specify both period variance and exact period effects.")
+	if(period.var==0 & length(period.effect)==1){
 		message("**MSG**: Period effect taken as a constant across entire study.")
+		incl.period.effect <- FALSE
+	}
 
 
 	## calculate total number of observations in entire study
@@ -170,14 +185,15 @@ power.sim.binomial <- function(n.sim=10,
 		sim.dat[,"mean.y"] <- mean.y
 		sim.dat[,"y"] <- rbinom(nrow(sim.dat), size=1, prob=expit(mean.y))
 
-		sim.dat <- data.frame(sim.dat)
+		## using "at risk time" column to count cluster sizes
+		sim.dat <- data.frame(sim.dat, at.risk.time=1)
 		sim.dat$clust <- factor(sim.dat$clust)
 		sim.dat$per <- factor(sim.dat$per)
 
 
 		## estimate tx effect
 		tmp <- estimation.function(dat=sim.dat,
-					   period.var=period.var,
+					   incl.period.effect=incl.period.effect,
 					   outcome.type="binomial",
 					   alpha=alpha)
 		results[i,c("beta.est", "beta.cil", "beta.cih")] <- tmp
@@ -199,7 +215,8 @@ power.sim.binomial <- function(n.sim=10,
 
 	out <- list(results=results,
 		    power=power,
-		    permute.power=permute.power)
+		    permute.power=permute.power,
+		    sample.data=sim.dat)
 	return(out)
 }
 
@@ -220,14 +237,23 @@ power.sim.poisson <- function(n.sim=10,
 {
 
 	## validation
+	incl.period.effect <- TRUE
+	if(period.var<0)
+		stop("period.var must be positive")
 	if(length(period.effect) != n.periods & length(period.effect) != 1)
 		stop("Length of period.effect must equal n.periods or 1.")
-	if(period.var==0 & length(period.effect)==1)
+	if(length(period.effect) > 1 & period.var > 0)
+		stop("cannot specify both period variance and exact period effects.")
+	if(period.var==0 & length(period.effect)==1){
 		message("**MSG**: Period effect taken as a constant across entire study.")
+		incl.period.effect <- FALSE
+	}
 	if(length(at.risk.params)==1)
 		message("**MSG**: at risk time assumed to be constant for all cluster-periods.")
 	if(length(at.risk.params)!=1 & length(at.risk.params)!=2)
 		message("**MSG**: at.risk.params must have length 1 or 2")
+
+
 
 	## calculate total number of observations in entire study
 	if(length(cluster.size)==1){
@@ -235,6 +261,7 @@ power.sim.poisson <- function(n.sim=10,
 		cluster.size <- rep(cluster.size, n.clusters*n.periods)
 	} else {
 		message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
+		cluster.size <- rep(cluster.size, each=n.periods)
 	}
 	n.obs <- sum(cluster.size)
 
@@ -275,8 +302,8 @@ power.sim.poisson <- function(n.sim=10,
 
 
 		full.beta <- c(effect.size, clust.effects, period.effect)
-		mean.y <- design.mat %*% full.beta
-		sim.dat[,"mean.y"] <- mean.y + log(at.risk.time)
+		mean.y <- design.mat %*% full.beta + log(at.risk.time)
+		sim.dat[,"mean.y"] <- mean.y
 		sim.dat[,"y"] <- rpois(nrow(sim.dat), exp(mean.y))
 
 		sim.dat <- data.frame(sim.dat, at.risk.time=at.risk.time)
@@ -286,7 +313,7 @@ power.sim.poisson <- function(n.sim=10,
 
 		## estimate tx effect
 		tmp <- estimation.function(dat=sim.dat,
-					   period.var=period.var,
+					   incl.period.effect=incl.period.effect,
 					   outcome.type="poisson",
 					   alpha=alpha)
 		results[i,c("beta.est", "beta.cil", "beta.cih")] <- tmp
@@ -308,7 +335,8 @@ power.sim.poisson <- function(n.sim=10,
 
 	out <- list(results=results,
 		    power=power,
-		    permute.power=permute.power)
+		    permute.power=permute.power,
+		    sample.data=sim.dat)
 	return(out)
 }
 
@@ -323,6 +351,12 @@ make.base.data <- function(n.obs, n.clusters,
 	colnames(sim.dat.base) <- c("id", "clust", "per",
 				    "trt", "mean.y", "y")
 	sim.dat.base[,"id"] <- 1:n.obs
+
+	## NOTE: length(cluster.size) should = n.periods*n.clusters,
+	##       where cluster.size[1] = size of cluster 1 during period 1
+	##       where cluster.size[2] = size of cluster 1 during period 2
+	##       where cluster.size[3] = size of cluster 2 during period 1 (assuming 2 periods)
+	##       ...
 	sim.dat.base[,"clust"] <- rep(1:n.clusters, times=cluster.size, each=n.periods)
 
 	sim.dat.base[,"per"] <- rep(rep(1:n.periods, times=n.clusters), times=cluster.size)

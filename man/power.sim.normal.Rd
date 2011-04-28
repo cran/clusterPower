@@ -62,7 +62,7 @@ make.base.data(n.obs, n.clusters, cluster.size, n.periods)
   \item{btw.clust.var}{the between-cluster variance}
   \item{indiv.var}{ for normal outcomes only, the individual level-variance }
   \item{ICC}{ for normal outcomes only, the ICC.  may be specified instead of indiv.var. }
-  \item{period.effect}{ average period effect }
+  \item{period.effect}{ period effect, on the link scale. See details. }
   \item{period.var}{ the period effects are drawn from a normal distribution centered at period.effect with variance period.var.  If period.var=0, period effect is assumed to be the same for all periods. }
   \item{estimation.function}{ function to run the data analysis. }
   \item{at.risk.params}{ a numeric vector of length 1 or 2. See details.}
@@ -72,12 +72,15 @@ make.base.data(n.obs, n.clusters, cluster.size, n.periods)
 \details{
 Runs the power simulation.
 
+The period.effect parameter needs to be specified on the "link function scale".  Meaning that if the average baseline risk for a Poisson model is 4/1000, then the period.effect should be specified as log(.004).  Similarly, the baseline risk in a logistic model should be specified on the logit scale.  The period effect can have length of 1, in which case it is treated as the average period effect across all periods, or it can have length equal to n.periods, in which case it is assumed that the investigator is specifying exact period effects s/he wishes to simulate.
+
 For the Poisson simulations, at risk time is computed for each individual in the simulation.  If at.risk.time is specified as a numeric vector of length 1, then the given number is the constant at-risk time which every individual is assumed to have.  If length(at.risk.time)==2, the values are taken as the mean and size parameters of a negative binomial distribution (used as 'mu' and 'size' in the rnbinom() function) from which an at-risk time is drawn for each individual. Specifically, the at risk times are drawn as  at.risk.time = 1 + rnbinom(1, size=at.risk.params[2], mu=at.risk.params[1]).
 }
 \value{ A list with the following components:
   \item{results }{ matrix with columns "dataset", "beta.est", "beta.cil", "beta.cih", "reject.null", "pval.permute"}
   \item{power }{numeric, the estimated power}
   \item{permute.power }{numeric, the estimated power using the permutation inference}
+  \item{sample.data }{a data frame containing the final simulated data set from the simulation run }
 }
 \references{
 Turner RM, White IR, Croudace T, PIP Study Group. Analysis of cluster randomized cross-over trial data: a comparison of methods. Stat Med. 2007 Jan 30;26(2):274-89.
