@@ -30,16 +30,19 @@ power.sim.normal <- function(n.sim=10,
 	if(length(period.effect) > 1 & period.var > 0)
 		stop("cannot specify both period variance and exact period effects.")
 	if(period.var==0 & length(period.effect)==1){
-		message("**MSG**: Period effect taken as a constant across entire study.")
+		## message("**MSG**: Period effect taken as a constant across entire study.")
 		incl.period.effect <- FALSE
+	}
+	if(n.clusters > 10 & grepl("fixed.effect", as.character(substitute(estimation.function)))) {
+		warning("Power estimates from fixed effect models with large numbers of clusters may be unstable.")
 	}
 
 	## calculate total number of observations in entire study
 	if(length(cluster.size)==1){
-		message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
+		## message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
 		cluster.size <- rep(cluster.size, n.clusters*n.periods)
 	} else {
-		message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
+		## message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
 	}
 	n.obs <- sum(cluster.size)
 
@@ -137,19 +140,22 @@ power.sim.binomial <- function(n.sim=10,
 	if(length(period.effect) > 1 & period.var > 0)
 		stop("cannot specify both period variance and exact period effects.")
 	if(period.var==0 & length(period.effect)==1){
-		message("**MSG**: Period effect taken as a constant across entire study.")
+		## message("**MSG**: Period effect taken as a constant across entire study.")
 		incl.period.effect <- FALSE
+	}
+	if(n.clusters > 10 & grepl("fixed.effect", as.character(substitute(estimation.function)))) {
+		warning("Power estimates from fixed effect models with large numbers of clusters may be unstable.")
 	}
 
 
 	## calculate total number of observations in entire study
 	if(length(cluster.size)==1){
-		message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
+		## message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
 		cluster.size <- rep(cluster.size, n.clusters*n.periods)
 	} else {
 		if(length(cluster.size)!=n.clusters)
 			stop("cluster sizes not equal to number of clusters")
-		message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
+		## message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
 	}
 	n.obs <- sum(cluster.size)
 
@@ -245,22 +251,25 @@ power.sim.poisson <- function(n.sim=10,
 	if(length(period.effect) > 1 & period.var > 0)
 		stop("cannot specify both period variance and exact period effects.")
 	if(period.var==0 & length(period.effect)==1){
-		message("**MSG**: Period effect taken as a constant across entire study.")
+		## message("**MSG**: Period effect taken as a constant across entire study.")
 		incl.period.effect <- FALSE
 	}
 	if(length(at.risk.params)==1)
-		message("**MSG**: at risk time assumed to be constant for all cluster-periods.")
+		## message("**MSG**: at risk time assumed to be constant for all cluster-periods.")
 	if(length(at.risk.params)!=1 & length(at.risk.params)!=2)
-		message("**MSG**: at.risk.params must have length 1 or 2")
+		stop("at.risk.params must have length 1 or 2")
+	if(n.clusters > 10 & grepl("fixed.effect", as.character(substitute(estimation.function)))) {
+		warning("Power estimates from fixed effect models with large numbers of clusters may be unstable.")
+	}
 
 
 
 	## calculate total number of observations in entire study
 	if(length(cluster.size)==1){
-		message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
+		## message("**MSG**: Treating cluster.size as the same for all cluster-periods.")
 		cluster.size <- rep(cluster.size, n.clusters*n.periods)
 	} else {
-		message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
+		## message("**MSG**: cluster.size values assumed fixed for a given cluster across all periods.")
 		cluster.size <- rep(cluster.size, each=n.periods)
 	}
 	n.obs <- sum(cluster.size)
@@ -415,6 +424,25 @@ make.base.data <- function(n.obs, n.clusters,
 logit <- function(p) log(p/(1-p))
 expit <- function(x) exp(x)/(1+exp(x))
 
+## converts mixed effect model parameters to hayes k parameters, for log-linear mixed effect models only
+mixed.eff.params <- function(pi0, btw.clust.var, Tk) {
+        e <- Tk * exp(pi0) * exp(btw.clust.var/2)
+        v <- e + e^2*(exp(btw.clust.var)-1)
+        k <- sqrt(v)/e
+        return(c(expectation=e, variance=v, hayes.k=k))
+}
 
-
-
+## implements power calculation based on Hayes (1999) formulas and the coef of variation, k
+hayes.power.poisson <- function(n.clusters, period.effect, btw.clust.var, at.risk.params, cluster.size, effect.size, alpha=.05) {
+	Tk <- at.risk.params*cluster.size
+        z.a <- qnorm(alpha/2, lower.tail=FALSE)
+        l0 <- exp(period.effect)
+        l1 <- exp(period.effect)*exp(effect.size)
+        ## calculate Hayes metrics
+        me.pars <- mixed.eff.params(pi0=period.effect, btw.clust.var=btw.clust.var, Tk=Tk)
+        obs.k <- me.pars["hayes.k"]
+        ## from formula 2 in Hayes et al.
+        z.b <- sqrt((n.clusters-1) * (l0-l1)^2 / ( (l0+l1)/Tk + obs.k^2 * (l0^2+l1^2)) )-z.a
+	beta <- unname(pnorm(z.b, lower.tail=FALSE))
+        return(1-beta)
+}
