@@ -10,7 +10,7 @@ This function calculates the power for a specified cluster-randomized study base
 }
 
 \usage{
-hayes.power.poisson(n.clusters, period.effect, btw.clust.var, at.risk.params,
+hayes.power.poisson(n.clusters, period.effect, btw.clust.var, at.risk.params, 
                     cluster.size, effect.size, alpha=.05)
 }
 
@@ -46,7 +46,7 @@ Nicholas G. Reich
 
 \examples{
     
-hayes.power.poisson(n.clusters=36, period.effect=log(.015), btw.clust.var=0,
+hayes.power.poisson(n.clusters=36, period.effect=log(.015), btw.clust.var=0, 
                     at.risk.params=20, cluster.size=20, effect.size=log(.7))
 
 }
